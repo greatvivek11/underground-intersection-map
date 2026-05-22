@@ -144,6 +144,7 @@ h6 {
 	font-weight: 800;
 	background: linear-gradient(135deg, var(--text-main) 60%, var(--primary));
 	-webkit-background-clip: text;
+	background-clip: text;
 	-webkit-text-fill-color: transparent;
 	display: inline-block;
 }
@@ -245,6 +246,7 @@ h6 {
 
 input[type="range"] {
 	-webkit-appearance: none;
+	appearance: none;
 	width: 100%;
 	height: 6px;
 	background: var(--border-color);
@@ -254,6 +256,7 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-thumb {
 	-webkit-appearance: none;
+	appearance: none;
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
@@ -336,5 +339,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
 	}
 	.page-container {
 		gap: 4rem;
+	}
+}
+
+/* Spinner Animation */
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
 	}
 }

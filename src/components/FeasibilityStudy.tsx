@@ -198,10 +198,12 @@ export default function FeasibilityStudy() {
 										/>
 										{/* Points dots */}
 										{dataset.values.map((val, vIdx) => {
+											const metricsItem = metrics[vIdx];
+											if (!metricsItem) return null;
 											const coords = getCoordinates(vIdx, val);
 											return (
 												<circle
-													key={`dot-${vIdx}-${dataset.label}`}
+													key={`dot-${metricsItem.key}-${dataset.label}`}
 													cx={coords.x}
 													cy={coords.y}
 													r={

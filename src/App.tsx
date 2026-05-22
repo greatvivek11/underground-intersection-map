@@ -1,4 +1,4 @@
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 import { Map as MapIcon, Menu, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import FeasibilityMatrix from "./components/FeasibilityMatrix";

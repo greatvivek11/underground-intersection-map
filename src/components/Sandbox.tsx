@@ -1,7 +1,8 @@
- import { Download, Settings } from "lucide-react";
-import { useState } from "react";
+import { Download, Settings } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
 import TunnelSimulation2D from "./TunnelSimulation2D";
-import TunnelSimulation3D from "./TunnelSimulation3D";
+
+const TunnelSimulation3D = lazy(() => import("./TunnelSimulation3D"));
 
 export default function Sandbox({
 	isDark,
@@ -185,12 +186,45 @@ export default function Sandbox({
 								speed={simSpeed}
 							/>
 						) : (
-							<TunnelSimulation3D
-								config={config}
-								isDark={isDark}
-								density={trafficDensity}
-								speed={simSpeed}
-							/>
+							<Suspense
+								fallback={
+									<div
+										style={{
+											display: "flex",
+											flexDirection: "column",
+											alignItems: "center",
+											gap: "1rem",
+											color: "var(--text-muted)",
+										}}
+									>
+										<div
+											style={{
+												width: "32px",
+												height: "32px",
+												border: "3px solid var(--border-color)",
+												borderTopColor: "var(--primary)",
+												borderRadius: "50%",
+												animation: "spin 1s linear infinite",
+											}}
+										/>
+										<span
+											style={{
+												fontSize: "0.85rem",
+												fontFamily: "var(--font-mono)",
+											}}
+										>
+											LOADING 3D ENGINE...
+										</span>
+									</div>
+								}
+							>
+								<TunnelSimulation3D
+									config={config}
+									isDark={isDark}
+									density={trafficDensity}
+									speed={simSpeed}
+								/>
+							</Suspense>
 						)}
 					</div>
 				</div>
