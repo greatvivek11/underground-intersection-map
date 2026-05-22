@@ -1,6 +1,10 @@
-import { ArrowDown, Milestone } from "lucide-react";
+import { ArrowDown, FileText, Milestone } from "lucide-react";
 
-export default function Hero() {
+interface HeroProps {
+	onOpenReport: () => void;
+}
+
+export default function Hero({ onOpenReport }: HeroProps) {
 	const handleScrollDown = () => {
 		const el = document.getElementById("surface-crisis");
 		if (el) {
@@ -205,15 +209,37 @@ export default function Hero() {
 				</div>
 			</div>
 
-			<button
-				type="button"
-				className="btn btn-primary"
-				onClick={handleScrollDown}
-				style={{ marginTop: "1rem" }}
+			<div
+				style={{
+					display: "flex",
+					gap: "1rem",
+					flexWrap: "wrap",
+					justifyContent: "center",
+					marginTop: "1rem",
+				}}
 			>
-				<span>Explore Case Study</span>
-				<ArrowDown size={16} />
-			</button>
+				<button
+					type="button"
+					className="btn btn-primary"
+					onClick={handleScrollDown}
+				>
+					<span>Explore Case Study</span>
+					<ArrowDown size={16} />
+				</button>
+				<button
+					type="button"
+					className="btn btn-secondary"
+					onClick={onOpenReport}
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: "0.5rem",
+					}}
+				>
+					<FileText size={16} />
+					<span>Read Deep Research</span>
+				</button>
+			</div>
 		</section>
 	);
 }

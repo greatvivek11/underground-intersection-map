@@ -1,6 +1,20 @@
-import { BarChart3, ChevronRight, Shield } from "lucide-react";
+import {
+	BarChart3,
+	BookOpen,
+	ChevronRight,
+	Download,
+	FileDown,
+	FileText,
+	Shield,
+} from "lucide-react";
 
-export default function FeasibilityStudy() {
+interface FeasibilityStudyProps {
+	onOpenReport: () => void;
+}
+
+export default function FeasibilityStudy({
+	onOpenReport,
+}: FeasibilityStudyProps) {
 	const metrics = [
 		{
 			name: "Capital Cost",
@@ -376,6 +390,112 @@ export default function FeasibilityStudy() {
 								immediately from surface parking lots.
 							</p>
 						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Gemini Research Report CTA Card */}
+			<div
+				className="glass-card"
+				style={{
+					marginTop: "2.5rem",
+					display: "flex",
+					flexDirection: "column",
+					gap: "1.5rem",
+					border: "1px solid var(--report-card-border)",
+					background: "var(--report-card-bg)",
+				}}
+			>
+				<div
+					style={{
+						display: "flex",
+						flexDirection: "row",
+						flexWrap: "wrap",
+						justifyContent: "space-between",
+						alignItems: "center",
+						gap: "1.5rem",
+					}}
+				>
+					<div
+						style={{
+							display: "flex",
+							gap: "1rem",
+							alignItems: "flex-start",
+							flex: "1 1 500px",
+						}}
+					>
+						<div
+							style={{
+								background: "var(--primary-bg)",
+								color: "var(--primary)",
+								padding: "0.75rem",
+								borderRadius: "0.75rem",
+								boxShadow: "0 0 15px var(--primary-glow)",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<BookOpen size={24} />
+						</div>
+						<div
+							style={{
+								display: "flex",
+								flexDirection: "column",
+								gap: "0.25rem",
+							}}
+						>
+							<h3 style={{ fontSize: "1.2rem", fontWeight: 800 }}>
+								Gemini Deep Research Report
+							</h3>
+							<p
+								style={{
+									fontSize: "0.9rem",
+									color: "var(--text-muted)",
+									lineHeight: 1.5,
+								}}
+							>
+								Read the original 10,000-word feasibility study on
+								narrow-diameter sub-surface road tunnels in Indian megacities.
+								Geotechnical parameters, cost comparison variables,
+								environmental monsoonal safeguards, and EV safety details are
+								thoroughly documented.
+							</p>
+						</div>
+					</div>
+
+					<div
+						style={{
+							display: "flex",
+							gap: "0.75rem",
+							flexWrap: "wrap",
+							flexShrink: 0,
+						}}
+					>
+						<button
+							type="button"
+							onClick={onOpenReport}
+							className="btn btn-primary"
+						>
+							<FileText size={16} />
+							<span>Read Online</span>
+						</button>
+						<a
+							href="/indian-urban-tunnel-transit-feasibility-study.docx"
+							download
+							className="btn btn-secondary"
+						>
+							<Download size={16} />
+							<span>DOCX</span>
+						</a>
+						<a
+							href="/indian-urban-tunnel-transit-feasibility-study.md"
+							download
+							className="btn btn-secondary"
+						>
+							<FileDown size={16} />
+							<span>MD</span>
+						</a>
 					</div>
 				</div>
 			</div>

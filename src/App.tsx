@@ -1,10 +1,20 @@
 import { Analytics } from "@vercel/analytics/react";
-import { Map as MapIcon, Menu, Moon, Sun, X } from "lucide-react";
+import {
+	FileText,
+	Github,
+	Globe,
+	Map as MapIcon,
+	Menu,
+	Moon,
+	Sun,
+	X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import FeasibilityMatrix from "./components/FeasibilityMatrix";
 import FeasibilityStudy from "./components/FeasibilityStudy";
 import GeometricShift from "./components/GeometricShift";
 import Hero from "./components/Hero";
+import ResearchReportModal from "./components/ResearchReportModal";
 import Sandbox from "./components/Sandbox";
 import ScenarioModeler from "./components/ScenarioModeler";
 import SurfaceCrisis from "./components/SurfaceCrisis";
@@ -12,6 +22,7 @@ import SurfaceCrisis from "./components/SurfaceCrisis";
 export default function App() {
 	const [isDark, setIsDark] = useState(true);
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const [reportModalOpen, setReportModalOpen] = useState(false);
 
 	const toggleTheme = () => {
 		setIsDark(!isDark);
@@ -139,6 +150,88 @@ export default function App() {
 						</button>
 					))}
 
+					{/* Research Report Button */}
+					<button
+						type="button"
+						onClick={() => setReportModalOpen(true)}
+						className="btn btn-outline"
+						style={{
+							padding: "0.4rem 0.8rem",
+							fontSize: "0.8rem",
+							borderRadius: "0.5rem",
+							display: "flex",
+							alignItems: "center",
+							gap: "0.3rem",
+						}}
+					>
+						<FileText size={14} />
+						<span>Research</span>
+					</button>
+
+					{/* Divider */}
+					<div
+						style={{
+							width: "1px",
+							height: "18px",
+							background: "var(--border-color)",
+						}}
+					/>
+
+					{/* GitHub Link */}
+					<a
+						href="https://github.com/greatvivek11"
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{
+							color: "var(--text-muted)",
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							transition: "color 0.2s ease",
+						}}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.color = "var(--primary)";
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.color = "var(--text-muted)";
+						}}
+						title="GitHub Profile"
+					>
+						<Github size={18} />
+					</a>
+
+					{/* Personal Website Link */}
+					<a
+						href="https://vivekkaushik.in"
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{
+							color: "var(--text-muted)",
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							transition: "color 0.2s ease",
+						}}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.color = "var(--primary)";
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.color = "var(--text-muted)";
+						}}
+						title="Personal Portfolio"
+					>
+						<Globe size={18} />
+					</a>
+
+					{/* Divider */}
+					<div
+						style={{
+							width: "1px",
+							height: "18px",
+							background: "var(--border-color)",
+						}}
+					/>
+
 					{/* Theme toggler */}
 					<button
 						type="button"
@@ -219,15 +312,81 @@ export default function App() {
 							{item.label}
 						</button>
 					))}
+					<button
+						type="button"
+						onClick={() => {
+							setReportModalOpen(true);
+							setMobileMenuOpen(false);
+						}}
+						style={{
+							background: "none",
+							border: "none",
+							color: "var(--primary)",
+							textAlign: "left",
+							fontSize: "1rem",
+							fontWeight: 600,
+							padding: "0.5rem 0",
+							borderBottom: "1px solid rgba(255,255,255,0.03)",
+							display: "flex",
+							alignItems: "center",
+							gap: "0.5rem",
+						}}
+					>
+						<FileText size={16} />
+						<span>Gemini Research Report</span>
+					</button>
+					<div
+						style={{
+							display: "flex",
+							gap: "1.5rem",
+							paddingTop: "0.5rem",
+							alignItems: "center",
+						}}
+					>
+						<a
+							href="https://github.com/greatvivek11"
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{
+								color: "var(--text-muted)",
+								display: "flex",
+								alignItems: "center",
+								gap: "0.5rem",
+								fontSize: "0.9rem",
+								fontWeight: 500,
+								textDecoration: "none",
+							}}
+						>
+							<Github size={18} />
+							<span>GitHub</span>
+						</a>
+						<a
+							href="https://vivekkaushik.in"
+							target="_blank"
+							rel="noopener noreferrer"
+							style={{
+								color: "var(--text-muted)",
+								display: "flex",
+								alignItems: "center",
+								gap: "0.5rem",
+								fontSize: "0.9rem",
+								fontWeight: 500,
+								textDecoration: "none",
+							}}
+						>
+							<Globe size={18} />
+							<span>Website</span>
+						</a>
+					</div>
 				</div>
 			)}
 
 			{/* Main Guided Scroll Layout */}
 			<main className="page-container">
-				<Hero />
+				<Hero onOpenReport={() => setReportModalOpen(true)} />
 				<SurfaceCrisis />
 				<GeometricShift />
-				<FeasibilityStudy />
+				<FeasibilityStudy onOpenReport={() => setReportModalOpen(true)} />
 				<FeasibilityMatrix />
 				<ScenarioModeler />
 
@@ -262,9 +421,96 @@ export default function App() {
 					UrbanDeep | Small-Diameter Underground Transit Framework
 				</span>
 				<span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-					Indian Metro Feasibility Study Research Grounded by Gemini Flash 3.1
-					Lite
+					Indian Metro Feasibility Study Research Grounded by Gemini 3.5 Flash
 				</span>
+
+				{/* Footer Socials & Report links */}
+				<div
+					style={{
+						display: "flex",
+						flexWrap: "wrap",
+						justifyContent: "center",
+						gap: "1.5rem",
+						margin: "0.5rem 0",
+					}}
+				>
+					<a
+						href="https://github.com/greatvivek11"
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{
+							color: "var(--text-muted)",
+							display: "flex",
+							alignItems: "center",
+							gap: "0.4rem",
+							fontSize: "0.8rem",
+							fontWeight: 600,
+							textDecoration: "none",
+							transition: "color 0.2s ease",
+						}}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.color = "var(--primary)";
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.color = "var(--text-muted)";
+						}}
+					>
+						<Github size={14} />
+						<span>GitHub Profile</span>
+					</a>
+					<a
+						href="https://vivekkaushik.in"
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{
+							color: "var(--text-muted)",
+							display: "flex",
+							alignItems: "center",
+							gap: "0.4rem",
+							fontSize: "0.8rem",
+							fontWeight: 600,
+							textDecoration: "none",
+							transition: "color 0.2s ease",
+						}}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.color = "var(--primary)";
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.color = "var(--text-muted)";
+						}}
+					>
+						<Globe size={14} />
+						<span>Vivek Kaushik</span>
+					</a>
+					<button
+						type="button"
+						onClick={() => setReportModalOpen(true)}
+						style={{
+							background: "none",
+							border: "none",
+							cursor: "pointer",
+							color: "var(--text-muted)",
+							display: "flex",
+							alignItems: "center",
+							gap: "0.4rem",
+							fontSize: "0.8rem",
+							fontWeight: 600,
+							textDecoration: "none",
+							padding: 0,
+							transition: "color 0.2s ease",
+						}}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.color = "var(--primary)";
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.color = "var(--text-muted)";
+						}}
+					>
+						<FileText size={14} />
+						<span>Read Full Research Report</span>
+					</button>
+				</div>
+
 				<span
 					style={{
 						fontSize: "0.7rem",
@@ -276,6 +522,13 @@ export default function App() {
 					PROC-GEOM ENGINE v2.0 &bull; WEBGL CANVAS VIRTUALIZATION
 				</span>
 			</footer>
+
+			{/* Research Report Modal */}
+			<ResearchReportModal
+				isOpen={reportModalOpen}
+				onClose={() => setReportModalOpen(false)}
+				isDark={isDark}
+			/>
 
 			{/* Responsive media-query styles inject */}
 			<style>{`
