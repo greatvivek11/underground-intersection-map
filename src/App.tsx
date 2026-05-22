@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import { Map as MapIcon, Menu, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import FeasibilityMatrix from "./components/FeasibilityMatrix";
@@ -283,6 +284,7 @@ export default function App() {
 					.mobile-only { display: flex !important; }
 				}
 			`}</style>
+			<Analytics />
 		</div>
 	);
 }
