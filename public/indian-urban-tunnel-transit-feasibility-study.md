@@ -235,13 +235,13 @@ The project has sparked intense debate over its high costs and questionable retu
 
 To improve the spatial and economic efficiency of a narrow 12-foot tunnel, planners must evaluate whether to allow private cars (ICE/EV) or restrict the system to a public EV-shuttle hybrid:
 
-#### Private Cars (Mixed ICE/EV)
+### Private Cars (Mixed ICE/EV)
 
 Allowing private cars inside narrow tunnels introduces significant risks.3 It requires building massive, expensive ventilation systems to handle ICE exhaust gases, increasing overall operating costs.31
 
 Furthermore, mixing vehicles of varying maintenance standards increases the risk of breakdown-induced gridlocks and vehicle fires inside single-lane tunnels.3
 
-#### Public EV-Shuttle Hybrid Systems
+### Public EV-Shuttle Hybrid Systems
 
 Restricting the tunnel network to a fleet of standardized, dedicated electric shuttles, similar to the Las Vegas Loop model, offers several key advantages 1:
 

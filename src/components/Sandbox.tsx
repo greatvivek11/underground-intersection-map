@@ -1,7 +1,13 @@
 import { Download, Maximize2, Minimize2, Settings, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+	buildTunnelConfig,
+	DEFAULT_TUNNEL_CONFIG,
+	type TunnelConfig,
+} from "../utils/geometry";
 import TunnelSimulation2D from "./TunnelSimulation2D";
+import type { CameraPreset } from "./TunnelSimulation3D";
 
 const TunnelSimulation3D = lazy(() => import("./TunnelSimulation3D"));
 
@@ -53,7 +59,7 @@ function SliderRow({
 	onChange: (v: number) => void;
 }) {
 	return (
-		<div className="slider-group" style={{ flex: "1 1 160px" }}>
+		<div className="slider-group" style={{ flex: "1 1 40px" }}>
 			<div className="slider-label">
 				<span>{label}</span>
 				<span className="value">{displayValue}</span>
@@ -76,17 +82,43 @@ function SliderRow({
 	);
 }
 
-interface SimConfig {
-	intersectionSize: number;
-	portalSetback: number;
-	portalOffset: number;
-	descentLength: number;
-	roadWidth: number;
-	medianWidth: number;
-	laneWidth: number;
-	kLeft: number;
-	kRight: number;
-	bezierPoints: number;
+function CameraPresetToggle({
+	preset,
+	setPreset,
+}: {
+	preset: CameraPreset;
+	setPreset: (v: CameraPreset) => void;
+}) {
+	return (
+		<div
+			style={{
+				display: "flex",
+				background: "var(--bg-color)",
+				border: "1px solid var(--border-color)",
+				borderRadius: "0.5rem",
+				padding: "0.25rem",
+			}}
+		>
+			{(["orbit", "underground"] as const).map((v) => (
+				<button
+					key={v}
+					type="button"
+					className="btn"
+					onClick={() => setPreset(v)}
+					style={{
+						background: preset === v ? "var(--primary)" : "transparent",
+						color: preset === v ? "var(--text-inverse)" : "var(--text-main)",
+						border: "none",
+						fontSize: "0.7rem",
+						padding: "0.35rem 0.6rem",
+						borderRadius: "0.35rem",
+					}}
+				>
+					{v === "orbit" ? "Orbit" : "Underground"}
+				</button>
+			))}
+		</div>
+	);
 }
 
 function SimCanvas({
@@ -96,13 +128,15 @@ function SimCanvas({
 	density,
 	speed,
 	height,
+	cameraPreset,
 }: {
 	viewType: string;
 	isDark: boolean;
-	config: SimConfig;
+	config: TunnelConfig;
 	density: number;
 	speed: number;
 	height: string;
+	cameraPreset: CameraPreset;
 }) {
 	return (
 		<div
@@ -133,6 +167,7 @@ function SimCanvas({
 						isDark={isDark}
 						density={density}
 						speed={speed}
+						cameraPreset={cameraPreset}
 					/>
 				</Suspense>
 			)}
@@ -187,10 +222,13 @@ export default function Sandbox({
 	isDark: boolean;
 	toggleTheme: () => void;
 }) {
-	const [portalSetback, setPortalSetback] = useState(75);
-	const [trafficDensity, setTrafficDensity] = useState(30);
+	const [portalSetback, setPortalSetback] = useState(
+		DEFAULT_TUNNEL_CONFIG.portalSetback,
+	);
+	const [trafficDensity, setTrafficDensity] = useState(10);
 	const [simSpeed, setSimSpeed] = useState(1);
 	const [viewType, setViewType] = useState("2d");
+	const [camera3DPreset, setCamera3DPreset] = useState<CameraPreset>("orbit");
 	const [isExporting, setIsExporting] = useState(false);
 	const [isExpanded, setIsExpanded] = useState(false);
 
@@ -209,18 +247,7 @@ export default function Sandbox({
 		};
 	}, [isExpanded]);
 
-	const config: SimConfig = {
-		intersectionSize: 140.0,
-		portalSetback,
-		portalOffset: 28.0,
-		descentLength: 30.0,
-		roadWidth: 80.0,
-		medianWidth: 8.0,
-		laneWidth: 12.0,
-		kLeft: 30.0,
-		kRight: 55.0,
-		bezierPoints: 100,
-	};
+	const config = buildTunnelConfig({ portalSetback });
 
 	const handleExport = async (format: "svg" | "png") => {
 		setIsExporting(true);
@@ -288,7 +315,14 @@ export default function Sandbox({
 				paddingBottom: "1rem",
 			}}
 		>
-			<div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "flex-start",
+					gap: "0.35rem",
+				}}
+			>
 				<span className="badge badge-primary">ACTIVE LABORATORY</span>
 				<span
 					style={{
@@ -305,6 +339,12 @@ export default function Sandbox({
 
 			<div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
 				<ViewToggle viewType={viewType} setViewType={setViewType} />
+				{viewType === "3d" && (
+					<CameraPresetToggle
+						preset={camera3DPreset}
+						setPreset={setCamera3DPreset}
+					/>
+				)}
 				<button
 					id="sandbox-expand-btn"
 					type="button"
@@ -372,6 +412,12 @@ export default function Sandbox({
 								style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}
 							>
 								<ViewToggle viewType={viewType} setViewType={setViewType} />
+								{viewType === "3d" && (
+									<CameraPresetToggle
+										preset={camera3DPreset}
+										setPreset={setCamera3DPreset}
+									/>
+								)}
 								<button
 									id="sandbox-modal-close"
 									type="button"
@@ -393,6 +439,7 @@ export default function Sandbox({
 								config={config}
 								density={trafficDensity}
 								speed={simSpeed}
+								cameraPreset={camera3DPreset}
 								height="calc(100dvh - 240px)"
 							/>
 						</div>
@@ -506,6 +553,7 @@ export default function Sandbox({
 						config={config}
 						density={trafficDensity}
 						speed={simSpeed}
+						cameraPreset={camera3DPreset}
 						height="520px"
 					/>
 				</div>
@@ -534,6 +582,25 @@ export default function Sandbox({
 						style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
 					>
 						{sliders}
+						<p
+							style={{
+								fontSize: "0.78rem",
+								color: "var(--text-muted)",
+								lineHeight: 1.5,
+								padding: "0.75rem",
+								background: "rgba(255,255,255,0.03)",
+								borderRadius: "0.5rem",
+								borderLeft: "3px solid var(--primary)",
+							}}
+						>
+							<strong style={{ color: "var(--text-main)" }}>
+								Core deconfliction:
+							</strong>{" "}
+							L-2/L-3 use world offsets plus staggered depths (12&nbsp;ft+
+							clearance) where paths cross. Plan lines may overlap; 3D
+							underground view shows the flyover stack. See{" "}
+							<code>shared/tunnel-config.json</code>.
+						</p>
 					</div>
 
 					{/* Python export */}

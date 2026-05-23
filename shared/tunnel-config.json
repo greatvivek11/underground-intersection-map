@@ -1,0 +1,170 @@
+{
+	"version": 3,
+	"defaults": {
+		"intersectionSize": 140,
+		"portalSetback": 75,
+		"portalOffset": 28,
+		"descentLength": 30,
+		"roadWidth": 80,
+		"medianWidth": 8,
+		"laneWidth": 12,
+		"kLeft": 30,
+		"kRight": 55,
+		"bezierPoints": 100,
+		"straightOffset": 6
+	},
+	"depthExaggeration": 1.35,
+	"minVerticalSeparationFt": 12,
+	"approaches": {
+		"S": { "name": "South", "in": [0, 1], "out": [0, -1] },
+		"N": { "name": "North", "in": [0, -1], "out": [0, 1] },
+		"E": { "name": "East", "in": [-1, 0], "out": [1, 0] },
+		"W": { "name": "West", "in": [1, 0], "out": [-1, 0] }
+	},
+	"routes": [
+		{
+			"start": "S",
+			"end": "N",
+			"type": "straight",
+			"level": -2,
+			"depth": -27,
+			"coreOffsetX": -16,
+			"coreOffsetY": 0,
+			"colorDark": "#38BDF8",
+			"colorLight": "#2563EB",
+			"label": "L-2a: Straight S→N"
+		},
+		{
+			"start": "N",
+			"end": "S",
+			"type": "straight",
+			"level": -2,
+			"depth": -27,
+			"coreOffsetX": 16,
+			"coreOffsetY": 0,
+			"colorDark": "#38BDF8",
+			"colorLight": "#2563EB",
+			"label": "L-2a: Straight N→S"
+		},
+		{
+			"start": "E",
+			"end": "W",
+			"type": "straight",
+			"level": -2,
+			"depth": -39,
+			"coreOffsetX": 0,
+			"coreOffsetY": 16,
+			"colorDark": "#38BDF8",
+			"colorLight": "#2563EB",
+			"label": "L-2b: Straight E→W"
+		},
+		{
+			"start": "W",
+			"end": "E",
+			"type": "straight",
+			"level": -2,
+			"depth": -39,
+			"coreOffsetX": 0,
+			"coreOffsetY": -16,
+			"colorDark": "#38BDF8",
+			"colorLight": "#2563EB",
+			"label": "L-2b: Straight W→E"
+		},
+		{
+			"start": "S",
+			"end": "W",
+			"type": "left",
+			"level": -1,
+			"depth": -15,
+			"coreOffsetX": 0,
+			"coreOffsetY": 0,
+			"colorDark": "#34D399",
+			"colorLight": "#059669",
+			"label": "L-1: Left Turn (Shallow)"
+		},
+		{
+			"start": "W",
+			"end": "N",
+			"type": "left",
+			"level": -1,
+			"depth": -15,
+			"coreOffsetX": 0,
+			"coreOffsetY": 0,
+			"colorDark": "#34D399",
+			"colorLight": "#059669",
+			"label": "L-1: Left Turn (Shallow)"
+		},
+		{
+			"start": "N",
+			"end": "E",
+			"type": "left",
+			"level": -1,
+			"depth": -15,
+			"coreOffsetX": 0,
+			"coreOffsetY": 0,
+			"colorDark": "#34D399",
+			"colorLight": "#059669",
+			"label": "L-1: Left Turn (Shallow)"
+		},
+		{
+			"start": "E",
+			"end": "S",
+			"type": "left",
+			"level": -1,
+			"depth": -15,
+			"coreOffsetX": 0,
+			"coreOffsetY": 0,
+			"colorDark": "#34D399",
+			"colorLight": "#059669",
+			"label": "L-1: Left Turn (Shallow)"
+		},
+		{
+			"start": "S",
+			"end": "E",
+			"type": "right",
+			"level": -3,
+			"depth": -52,
+			"coreOffsetX": 22,
+			"coreOffsetY": 22,
+			"colorDark": "#F87171",
+			"colorLight": "#DC2626",
+			"label": "L-3: Right S→E"
+		},
+		{
+			"start": "E",
+			"end": "N",
+			"type": "right",
+			"level": -3,
+			"depth": -64,
+			"coreOffsetX": 22,
+			"coreOffsetY": -22,
+			"colorDark": "#F87171",
+			"colorLight": "#DC2626",
+			"label": "L-3: Right E→N"
+		},
+		{
+			"start": "N",
+			"end": "W",
+			"type": "right",
+			"level": -3,
+			"depth": -76,
+			"coreOffsetX": -22,
+			"coreOffsetY": -22,
+			"colorDark": "#F87171",
+			"colorLight": "#DC2626",
+			"label": "L-3: Right N→W"
+		},
+		{
+			"start": "W",
+			"end": "S",
+			"type": "right",
+			"level": -3,
+			"depth": -64,
+			"coreOffsetX": -22,
+			"coreOffsetY": 22,
+			"colorDark": "#F87171",
+			"colorLight": "#DC2626",
+			"label": "L-3: Right W→S"
+		}
+	]
+}

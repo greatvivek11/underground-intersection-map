@@ -1,94 +1,126 @@
-# Underground Tunnel Intersection Routing System
+# UrbanDeep — Underground Tunnel Intersection Map
 
-This project implements a sophisticated visualization system for a 4-way urban intersection, designed under Indian Left-Hand Traffic (LHT) rules. It functions as a conceptual "mobility router" or "vehicular network graph," generating premium, engineering-style 2D schematics in both SVG and PNG formats. The system focuses on optimizing subterranean traffic flow with advanced routing logic and visual clarity.
+Interactive research site and engineering simulator for **small-diameter (~12 ft) subterranean transit** at **4-way urban intersections** in Indian metros, modeled under **left-hand traffic (LHT)** rules.
 
-## Key Features (Version 2.0 Optimized)
+The app combines a guided feasibility narrative (congestion, geometry, policy, comparative analysis) with a **Simulation Lab** that renders the same tunnel network in **2D canvas** and **3D WebGL**, plus optional **SVG/PNG export** via a Python/Matplotlib API.
 
-The visualization incorporates several advanced engineering and design principles:
+## Architecture
 
-*   **Indian Left-Hand Traffic (LHT) Paradigm:** Accurately models portal placement and traffic flow according to LHT rules.
-*   **Depth-Separated Strata (L1-L3):** Tunnels are visually represented across three depth layers to manage structural complexity and reduce central congestion:
-    *   **L-1 (Shallow):** Optimized for Left Turn Tunnels.
-    *   **L-2 (Primary):** Main corridors for Straight-through Tunnels.
-    *   **L-3 (Deep Bypass):** For Right Turn Tunnels that require the most clearance.
-*   **Fuel-Efficient Hybrid Splines:** Routing paths utilize a hybrid of straight segments and smooth Bezier curves. This design prioritizes the absolute shortest path while maintaining engineering requirements for high-speed transition curves, optimizing for cumulative time and fuel savings.
-*   **Offset Central Switching Fabric:** Straight-through tunnels are subtly offset from the absolute center to reduce intersection density and improve structural clearances in the core.
-*   **Comprehensive Visual Elements:**
-    *   Detailed measurement callouts for portal setback, road width, and intersection core dimensions.
-    *   Traffic car symbols to simulate live flow on surface lanes.
-    *   Support for both `LIGHT (Sleek Technical)` and `DARK (Cyberpunk Blueprint)` themes.
+```mermaid
+flowchart TB
+  subgraph narrative [Scroll narrative]
+    Hero --> SurfaceCrisis --> GeometricShift
+    GeometricShift --> FeasibilityStudy --> FeasibilityMatrix
+    FeasibilityMatrix --> ScenarioModeler --> Sandbox
+  end
 
-## Project Structure
+  subgraph core [Shared tunnel geometry]
+    config["shared/tunnel-config.json"]
+    geometry["src/utils/geometry.ts"]
+    python["src/visualize_tunnels.py"]
+    config --> geometry
+    config --> python
+  end
 
-*   `src/`: Contains the core Python script for generating the visualizations.
-    *   `visualize_tunnels.py`: The main script that defines the geometry, network topology, and rendering logic.
-*   `docs/`: Contains supporting documentation and feasibility studies.
-    *   `urban_tunneling_summary.md`: An executive summary outlining the core paradigm, engineering constraints, and urban application of micro-tunnels.
-*   `artefacts/`: Stores the generated output diagrams.
-    *   `tunnel_routing_schematic.png`: High-resolution PNG output.
-    *   `tunnel_routing_schematic.svg`: Scalable Vector Graphic (SVG) output.
-*   `requirements.txt`: Lists all Python dependencies required to run the project.
+  Sandbox --> Sim2D["TunnelSimulation2D"]
+  Sandbox --> Sim3D["TunnelSimulation3D"]
+  Sim2D --> geometry
+  Sim3D --> geometry
+  Sandbox --> API["api/generate.py → PNG/SVG"]
+  API --> python
 
-## Setup Guide
+  App --> Modal["ResearchReportModal"]
+```
 
-To set up and run the project, follow these steps:
+## Key concepts
+
+- **LHT portal placement:** Entry/exit portals offset to the left of travel direction.
+- **Depth strata:** L-1 shallow left turns (−15 ft), L-2 primary straights (−30 ft), L-3 deep right turns (−45 ft).
+- **12 routed movements:** All straight, left, and right combinations across N/S/E/W approaches.
+- **Offset straights:** Straight tunnels are laterally separated at the core to reduce intersection congestion (`straightOffset` in shared config).
+
+Constants and route tables live in **`shared/tunnel-config.json`**. The routing algorithms are implemented in both TypeScript (live sim) and Python (static export); run `npm run test:geometry` to verify they stay aligned.
+
+## Project structure
+
+| Path | Purpose |
+|------|---------|
+| `src/` | React app (Vite), sections, simulators |
+| `src/utils/geometry.ts` | Tunnel network builder for 2D/3D sim |
+| `src/visualize_tunnels.py` | Matplotlib schematic renderer |
+| `shared/tunnel-config.json` | Single source of truth for dimensions & routes |
+| `api/generate.py` | Vercel serverless handler for SVG/PNG export |
+| `scripts/compare_geometry.py` | TS ↔ Python alignment test |
+| `docs/` | Research copies and architecture notes |
+| `public/` | Static assets (research markdown served to the modal) |
+
+## Getting started
 
 ### Prerequisites
 
-*   Python 3.x
-*   `pip` (Python package installer)
+- **Node.js** 18+ and npm (required for the web app)
+- **Python** 3.9+ with dependencies from `requirements.txt` (only for CLI export and `/api/generate`)
 
-### Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository_url>
-    cd underground-intersection-map
-    ```
-2.  **Create a virtual environment (recommended):**
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
-    ```
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## Usage
-
-Run the visualization script from the project root.
+### Web app (primary workflow)
 
 ```bash
-python3 src/visualize_tunnels.py [OPTIONS]
+npm install
+npm run dev
 ```
 
-### Command-Line Arguments
+Open [http://localhost:5173](http://localhost:5173).
 
-*   `--dark`: Generate a dark-mode cyberpunk/blueprint theme instead of the default light schematic.
-    *   Example: `--dark`
-*   `--setback <distance>`: Configure the tunnel portal setback distance in feet.
-    *   Default: `75.0` ft
-    *   Example: `--setback 100.0`
-*   `--output-png <path>`: Specify the path to save the PNG output diagram.
-    *   Default: `tunnel_routing_schematic.png`
-    *   Example: `--output-png my_diagram.png`
-*   `--output-svg <path>`: Specify the path to save the SVG vector output.
-    *   Default: `tunnel_routing_schematic.svg`
-    *   Example: `--output-svg my_diagram.svg`
-
-### Examples
-
-**Generate a light-themed diagram with default settings:**
+Other scripts:
 
 ```bash
-python3 src/visualize_tunnels.py
+npm run build      # production bundle
+npm run preview    # preview production build
+npm run lint       # Biome check
+npm run test:geometry   # verify TS and Python networks match
 ```
 
-**Generate a dark-themed diagram with a custom setback:**
+### Static diagram export
+
+**On Vercel (production):** the Simulation Lab export buttons call:
+
+```
+GET /api/generate?setback=75&dark=true&format=svg
+```
+
+Query parameters: `setback` (feet), `dark` (`true`/`false`), `format` (`svg` | `png`).
+
+**Locally:** the Vercel Python function is not started by `vite` alone. Use the CLI instead:
 
 ```bash
-python3 src/visualize_tunnels.py --dark --setback 120.0 --output-png artefacts/dark_schematic.png
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python3 src/visualize_tunnels.py --setback 75 --dark --output-png artefacts/schematic.png --output-svg artefacts/schematic.svg
 ```
 
-This project provides a robust framework for conceptualizing and visualizing complex underground urban mobility solutions, prioritizing both engineering realism and efficient traffic flow.
+CLI options:
+
+| Flag | Description |
+|------|-------------|
+| `--dark` | Dark blueprint theme |
+| `--setback <ft>` | Portal setback distance (default from `tunnel-config.json`) |
+| `--output-png <path>` | PNG output path |
+| `--output-svg <path>` | SVG output path |
+
+## Simulation Lab controls
+
+- **Portal setback** — distance from intersection edge to portal boxes
+- **Traffic density** — number of animated pods in the network
+- **Sim speed** — animation multiplier
+- **2D / 3D** — engineering schematic vs. stratified WebGL view
+
+## Research report
+
+The in-app **Research** modal loads `public/indian-urban-tunnel-transit-feasibility-study.md`. A copy may also exist under `docs/`; keep `public/` in sync if you edit the study.
+
+## Documentation
+
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for system design, geometry contract, deployment, and contributor notes.
+
+## License
+
+Private project (`package.json` → `"private": true`). See repository owner for usage terms.

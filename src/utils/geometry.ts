@@ -1,5 +1,7 @@
-// Geometry Utilities for Underground Tunnel Intersection routing
-// Mirrors the logic inside visualize_tunnels.py
+// Geometry utilities for underground tunnel intersection routing.
+// Constants: shared/tunnel-config.json | Algorithm mirrored in visualize_tunnels.py
+
+import tunnelSpec from "../../shared/tunnel-config.json";
 
 export interface TunnelConfig {
 	intersectionSize: number;
@@ -12,6 +14,27 @@ export interface TunnelConfig {
 	bezierPoints?: number;
 	kLeft: number;
 	kRight: number;
+}
+
+export interface TunnelRoute {
+	start: string;
+	end: string;
+	type: "straight" | "left" | "right";
+	level: number;
+	depth: number;
+	/** World-space X offset (ft) applied to the full tunnel centerline in the core */
+	coreOffsetX?: number;
+	/** World-space Y offset (ft) applied to the full tunnel centerline in the core */
+	coreOffsetY?: number;
+	colorDark: string;
+	colorLight: string;
+	label: string;
+}
+
+export interface ApproachVectors {
+	name: string;
+	in: number[];
+	out: number[];
 }
 
 export interface TunnelEdge {
@@ -27,157 +50,55 @@ export interface TunnelEdge {
 	label?: string;
 }
 
-export const APPROACHES: Record<
-	string,
-	{ name: string; in: number[]; out: number[] }
-> = {
-	S: { name: "South", in: [0, 1], out: [0, -1] },
-	N: { name: "North", in: [0, -1], out: [0, 1] },
-	E: { name: "East", in: [-1, 0], out: [1, 0] },
-	W: { name: "West", in: [1, 0], out: [-1, 0] },
+const { defaults, approaches, routes } = tunnelSpec;
+
+export const STRAIGHT_OFFSET = defaults.straightOffset;
+
+export const DEFAULT_TUNNEL_CONFIG: TunnelConfig = {
+	intersectionSize: defaults.intersectionSize,
+	portalSetback: defaults.portalSetback,
+	portalOffset: defaults.portalOffset,
+	descentLength: defaults.descentLength,
+	roadWidth: defaults.roadWidth,
+	medianWidth: defaults.medianWidth,
+	laneWidth: defaults.laneWidth,
+	kLeft: defaults.kLeft,
+	kRight: defaults.kRight,
+	bezierPoints: defaults.bezierPoints,
 };
 
-export const ROUTES = [
-	// Straights (L-2)
-	{
-		start: "S",
-		end: "N",
-		type: "straight",
-		level: -2,
-		depth: -30,
-		colorDark: "#38BDF8",
-		colorLight: "#2563EB",
-		label: "L-2: Straight (Primary)",
-	},
-	{
-		start: "N",
-		end: "S",
-		type: "straight",
-		level: -2,
-		depth: -30,
-		colorDark: "#38BDF8",
-		colorLight: "#2563EB",
-		label: "L-2: Straight (Primary)",
-	},
-	{
-		start: "E",
-		end: "W",
-		type: "straight",
-		level: -2,
-		depth: -30,
-		colorDark: "#38BDF8",
-		colorLight: "#2563EB",
-		label: "L-2: Straight (Primary)",
-	},
-	{
-		start: "W",
-		end: "E",
-		type: "straight",
-		level: -2,
-		depth: -30,
-		colorDark: "#38BDF8",
-		colorLight: "#2563EB",
-		label: "L-2: Straight (Primary)",
-	},
-
-	// Left Turns (L-1)
-	{
-		start: "S",
-		end: "W",
-		type: "left",
-		level: -1,
-		depth: -15,
-		colorDark: "#34D399",
-		colorLight: "#059669",
-		label: "L-1: Left Turn (Shallow)",
-	},
-	{
-		start: "W",
-		end: "N",
-		type: "left",
-		level: -1,
-		depth: -15,
-		colorDark: "#34D399",
-		colorLight: "#059669",
-		label: "L-1: Left Turn (Shallow)",
-	},
-	{
-		start: "N",
-		end: "E",
-		type: "left",
-		level: -1,
-		depth: -15,
-		colorDark: "#34D399",
-		colorLight: "#059669",
-		label: "L-1: Left Turn (Shallow)",
-	},
-	{
-		start: "E",
-		end: "S",
-		type: "left",
-		level: -1,
-		depth: -15,
-		colorDark: "#34D399",
-		colorLight: "#059669",
-		label: "L-1: Left Turn (Shallow)",
-	},
-
-	// Right Turns (L-3)
-	{
-		start: "S",
-		end: "E",
-		type: "right",
-		level: -3,
-		depth: -45,
-		colorDark: "#F87171",
-		colorLight: "#DC2626",
-		label: "L-3: Right Turn (Deep)",
-	},
-	{
-		start: "E",
-		end: "N",
-		type: "right",
-		level: -3,
-		depth: -45,
-		colorDark: "#F87171",
-		colorLight: "#DC2626",
-		label: "L-3: Right Turn (Deep)",
-	},
-	{
-		start: "N",
-		end: "W",
-		type: "right",
-		level: -3,
-		depth: -45,
-		colorDark: "#F87171",
-		colorLight: "#DC2626",
-		label: "L-3: Right Turn (Deep)",
-	},
-	{
-		start: "W",
-		end: "S",
-		type: "right",
-		level: -3,
-		depth: -45,
-		colorDark: "#F87171",
-		colorLight: "#DC2626",
-		label: "L-3: Right Turn (Deep)",
-	},
-];
-
-// Returns unit normal vector pointing to the left of travel direction (LHT)
-export function getLeftNormal(dir: number[]): number[] {
-	const [dx, dy] = dir;
-	return [-dy, dx]; // 90-degree counter-clockwise rotation
+export function buildTunnelConfig(
+	overrides: Partial<TunnelConfig> = {},
+): TunnelConfig {
+	return { ...DEFAULT_TUNNEL_CONFIG, ...overrides };
 }
 
-// Computes points along a cubic Bezier curve defined by p0, p1, p2, p3
+export const APPROACHES = approaches as Record<string, ApproachVectors>;
+
+export const ROUTES = routes as TunnelRoute[];
+
+export function getLeftNormal(dir: number[]): number[] {
+	const [dx, dy] = dir;
+	return [-dy, dx];
+}
+
+/** World-space shift so same-depth routes do not share centerline crossings. */
+export function applyRouteSeparation(
+	path: number[][],
+	route: TunnelRoute,
+): number[][] {
+	const ox = route.coreOffsetX ?? 0;
+	const oy = route.coreOffsetY ?? 0;
+	if (ox === 0 && oy === 0) return path;
+	return path.map((p) => [p[0] + ox, p[1] + oy]);
+}
+
 export function computeBezier(
 	p0: number[],
 	p1: number[],
 	p2: number[],
 	p3: number[],
-	nPoints = 100,
+	nPoints = defaults.bezierPoints,
 ): number[][] {
 	const points = [];
 	for (let i = 0; i < nPoints; i++) {
@@ -201,15 +122,14 @@ export function computeBezier(
 	return points;
 }
 
-// Compute the coordinates for all layout infrastructure nodes & paths
 export function getTunnelNetwork(config: TunnelConfig): {
 	nodes: Record<string, number[]>;
 	edges: TunnelEdge[];
 } {
 	const nodes: Record<string, number[]> = {};
 	const halfBox = config.intersectionSize / 2.0;
+	const nPoints = config.bezierPoints ?? defaults.bezierPoints;
 
-	// 1. Build Nodes
 	Object.keys(APPROACHES).forEach((name) => {
 		const vecs = APPROACHES[name];
 		const dirIn = vecs.in;
@@ -219,7 +139,6 @@ export function getTunnelNetwork(config: TunnelConfig): {
 
 		const anchor = [dirIn[0] * -halfBox, dirIn[1] * -halfBox];
 
-		// Entry Portal
 		const entryPos = [
 			anchor[0] -
 				dirIn[0] * config.portalSetback +
@@ -229,7 +148,6 @@ export function getTunnelNetwork(config: TunnelConfig): {
 				normInLeft[1] * config.portalOffset,
 		];
 
-		// Exit Portal
 		const exitPos = [
 			anchor[0] -
 				dirIn[0] * config.portalSetback +
@@ -239,13 +157,11 @@ export function getTunnelNetwork(config: TunnelConfig): {
 				normOutLeft[1] * config.portalOffset,
 		];
 
-		// Divergence (Entry Ramp bottom)
 		const divPos = [
 			entryPos[0] + dirIn[0] * config.descentLength,
 			entryPos[1] + dirIn[1] * config.descentLength,
 		];
 
-		// Merge (Exit Ramp bottom)
 		const mergePos = [
 			exitPos[0] + dirIn[0] * config.descentLength,
 			exitPos[1] + dirIn[1] * config.descentLength,
@@ -257,10 +173,8 @@ export function getTunnelNetwork(config: TunnelConfig): {
 		nodes[`${name}_merge`] = mergePos;
 	});
 
-	// 2. Build Paths for Tunnels
 	const edges: TunnelEdge[] = [];
 
-	// Descent & Ascent Ramps (Straight lines)
 	Object.keys(APPROACHES).forEach((name) => {
 		edges.push({
 			from: `${name}_entry`,
@@ -283,7 +197,6 @@ export function getTunnelNetwork(config: TunnelConfig): {
 		});
 	});
 
-	// Core routed tunnels
 	ROUTES.forEach((route) => {
 		const uNode = `${route.start}_div`;
 		const vNode = `${route.end}_merge`;
@@ -297,30 +210,22 @@ export function getTunnelNetwork(config: TunnelConfig): {
 		let pathPts: number[][] = [];
 
 		if (route.type === "straight") {
-			// Offset straight tunnels to reduce intersection center overlap
-			const offsetVal = 6.0;
-			const norm = getLeftNormal(dIn);
-			const p0Off = [p0[0] + norm[0] * offsetVal, p0[1] + norm[1] * offsetVal];
-			const p3Off = [p3[0] + norm[0] * offsetVal, p3[1] + norm[1] * offsetVal];
-
 			pathPts = [];
-			const nPoints = config.bezierPoints || 100;
 			for (let i = 0; i < nPoints; i++) {
 				const t = i / (nPoints - 1);
-				const x = p0Off[0] * (1 - t) + p3Off[0] * t;
-				const y = p0Off[1] * (1 - t) + p3Off[1] * t;
-				pathPts.push([x, y]);
+				pathPts.push([
+					p0[0] * (1 - t) + p3[0] * t,
+					p0[1] * (1 - t) + p3[1] * t,
+				]);
 			}
 		} else if (route.type === "left") {
-			// Left turn cubic spline
 			const p1 = [p0[0] + dIn[0] * config.kLeft, p0[1] + dIn[1] * config.kLeft];
 			const p2 = [
 				p3[0] - dOut[0] * config.kLeft,
 				p3[1] - dOut[1] * config.kLeft,
 			];
-			pathPts = computeBezier(p0, p1, p2, p3, config.bezierPoints || 100);
+			pathPts = computeBezier(p0, p1, p2, p3, nPoints);
 		} else if (route.type === "right") {
-			// Right turn cubic spline
 			const p1 = [
 				p0[0] + dIn[0] * config.kRight,
 				p0[1] + dIn[1] * config.kRight,
@@ -329,8 +234,10 @@ export function getTunnelNetwork(config: TunnelConfig): {
 				p3[0] - dOut[0] * config.kRight,
 				p3[1] - dOut[1] * config.kRight,
 			];
-			pathPts = computeBezier(p0, p1, p2, p3, config.bezierPoints || 100);
+			pathPts = computeBezier(p0, p1, p2, p3, nPoints);
 		}
+
+		pathPts = applyRouteSeparation(pathPts, route);
 
 		edges.push({
 			from: uNode,

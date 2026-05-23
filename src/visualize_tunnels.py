@@ -6,7 +6,9 @@ Generates premium, engineering-style 2D schematics in SVG and PNG.
 """
 
 import os
+import json
 import argparse
+from pathlib import Path as PathLib
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -17,6 +19,18 @@ from matplotlib.transforms import Affine2D
 # ==============================================================================
 # 1. Configuration & Styling System
 # ==============================================================================
+
+_TUNNEL_SPEC_PATH = PathLib(__file__).resolve().parent.parent / "shared" / "tunnel-config.json"
+
+
+def _load_tunnel_spec():
+    with open(_TUNNEL_SPEC_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+TUNNEL_SPEC = _load_tunnel_spec()
+_TUNNEL_DEFAULTS = TUNNEL_SPEC["defaults"]
+
 
 class Theme:
     """Colors and style tokens for rendering themes."""
@@ -56,23 +70,21 @@ class Theme:
 
 
 class Config:
-    """Dimensional constants and mathematical configuration."""
-    # Intersection geometry (in feet)
-    road_width = 80.0       # Total width of the road cross-section
-    lane_width = 12.0       # Width of an individual lane
-    median_width = 8.0      # Width of the center median
-    intersection_size = 140.0 # Length of intersection square boundaries
-    
-    # Portals and setback parameters
-    portal_setback = 75.0   # Setback distance from the intersection edge
-    portal_offset = 28.0    # Offset from centerline to outer lane edge (4 + 12 + 12 = 28 ft)
-    descent_length = 30.0   # Descent/ascent corridor ramp length
-    
-    # Graphic and curve variables
-    k_left = 30.0           # Reduced for tighter, more efficient lefts
-    k_right = 55.0          # Optimized for right-hand turns
-    bezier_points = 150     # Number of interpolation steps for splines
-    
+    """Dimensional constants and mathematical configuration (from shared/tunnel-config.json)."""
+    road_width = float(_TUNNEL_DEFAULTS["roadWidth"])
+    lane_width = float(_TUNNEL_DEFAULTS["laneWidth"])
+    median_width = float(_TUNNEL_DEFAULTS["medianWidth"])
+    intersection_size = float(_TUNNEL_DEFAULTS["intersectionSize"])
+
+    portal_setback = float(_TUNNEL_DEFAULTS["portalSetback"])
+    portal_offset = float(_TUNNEL_DEFAULTS["portalOffset"])
+    descent_length = float(_TUNNEL_DEFAULTS["descentLength"])
+
+    k_left = float(_TUNNEL_DEFAULTS["kLeft"])
+    k_right = float(_TUNNEL_DEFAULTS["kRight"])
+    bezier_points = int(_TUNNEL_DEFAULTS["bezierPoints"])
+    straight_offset = float(_TUNNEL_DEFAULTS["straightOffset"])
+
     # Depth Layering Logic
     depth_layers = {
         "left": {"level": -1, "alpha": 1.0, "glow": 2.0},
@@ -121,13 +133,12 @@ class TunnelNetwork:
         self.cfg = config
         self.G = nx.DiGraph()
         
-        # Directions mapping: Name -> (inbound_vector, outbound_vector)
-        # Note: Origin is at (0,0)
         self.approaches = {
-            "S": {"in": np.array([0, 1]), "out": np.array([0, -1])},  # From South going North
-            "N": {"in": np.array([0, -1]), "out": np.array([0, 1])},  # From North going South
-            "E": {"in": np.array([-1, 0]), "out": np.array([1, 0])},  # From East going West
-            "W": {"in": np.array([1, 0]), "out": np.array([-1, 0])}   # From West going East
+            name: {
+                "in": np.array(vecs["in"], dtype=float),
+                "out": np.array(vecs["out"], dtype=float),
+            }
+            for name, vecs in TUNNEL_SPEC["approaches"].items()
         }
         
         self._build_nodes()
@@ -177,66 +188,60 @@ class TunnelNetwork:
             self.G.add_edge(f"{name}_entry", f"{name}_div", type="descent", route_type="straight")
             self.G.add_edge(f"{name}_merge", f"{name}_exit", type="ascent", route_type="straight")
             
-        # Core routing rules connecting divergence to merge nodes
-        # Left-Hand Traffic routing table:
-        # Straight: S->N, N->S, E->W, W->E
-        # Left turn: S->W, W->N, N->E, E->S
-        # Right turn: S->E, E->N, N->W, W->S
-        
-        self.routes = [
-            ("S", "N", "straight"), ("N", "S", "straight"), ("E", "W", "straight"), ("W", "E", "straight"), # Straights
-            ("S", "W", "left"),     ("W", "N", "left"),     ("N", "E", "left"),     ("E", "S", "left"),     # Left Turns
-            ("S", "E", "right"),    ("E", "N", "right"),    ("N", "W", "right"),    ("W", "S", "right")     # Right Turns
-        ]
-        
-        for u_app, v_app, r_type in self.routes:
+        self.route_specs = TUNNEL_SPEC["routes"]
+
+        for route in self.route_specs:
+            u_app = route["start"]
+            v_app = route["end"]
+            r_type = route["type"]
             u_node = f"{u_app}_div"
             v_node = f"{v_app}_merge"
-            
-            # Calculate procedural splines/paths
-            path_pts = self._generate_route_path(u_app, v_app, r_type)
+
+            path_pts = self._generate_route_path(u_app, v_app, r_type, route)
             
             self.G.add_edge(
                 u_node, v_node,
                 type="tunnel",
                 route_type=r_type,
-                path=path_pts
+                path=path_pts,
+                depth=float(route["depth"]),
             )
 
-    def _generate_route_path(self, start, end, route_type):
+    def _apply_route_separation(self, path, route_spec):
+        """World-space offset so same-depth routes do not intersect in the core."""
+        ox = float(route_spec.get("coreOffsetX") or 0)
+        oy = float(route_spec.get("coreOffsetY") or 0)
+        if ox == 0 and oy == 0:
+            return path
+        delta = np.array([ox, oy], dtype=float)
+        return path + delta
+
+    def _generate_route_path(self, start, end, route_type, route_spec):
         """Generates coordinate arrays representing optimized hybrid tunnel paths."""
         p0 = self.G.nodes[f"{start}_div"]["pos"]
         p3 = self.G.nodes[f"{end}_merge"]["pos"]
-        
+
         d_in = self.approaches[start]["in"]
         d_out = self.approaches[end]["out"]
-        
-        # Central Offset to reduce congestion at (0,0)
-        # Straight-through tunnels will be slightly separated
-        offset_val = 6.0
-        
+
         if route_type == "straight":
-            # Straight-through with slight lateral offset to reduce central density
-            norm = get_left_normal(d_in)
-            p0_off = p0 + norm * offset_val
-            p3_off = p3 + norm * offset_val
             t_vals = np.linspace(0, 1, self.cfg.bezier_points)[:, np.newaxis]
-            return p0_off * (1 - t_vals) + p3_off * t_vals
-            
+            path = p0 * (1 - t_vals) + p3 * t_vals
+
         elif route_type == "left":
-            # Hybrid Left: Straight -> Curve -> Straight
-            # Minimizes curvature time to save fuel/time
             p1 = p0 + (d_in * self.cfg.k_left)
             p2 = p3 - (d_out * self.cfg.k_left)
-            return compute_bezier(p0, p1, p2, p3, self.cfg.bezier_points)
-            
+            path = compute_bezier(p0, p1, p2, p3, self.cfg.bezier_points)
+
         elif route_type == "right":
-            # Optimized Right Turn: Uses deeper "pinwheel" logic but straighter entry/exit
             p1 = p0 + (d_in * self.cfg.k_right)
             p2 = p3 - (d_out * self.cfg.k_right)
-            return compute_bezier(p0, p1, p2, p3, self.cfg.bezier_points)
-            
-        return np.array([p0, p3])
+            path = compute_bezier(p0, p1, p2, p3, self.cfg.bezier_points)
+
+        else:
+            path = np.array([p0, p3])
+
+        return self._apply_route_separation(path, route_spec)
 
 
 # ==============================================================================

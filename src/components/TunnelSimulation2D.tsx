@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { TunnelConfig, TunnelEdge } from "../utils/geometry";
 import { APPROACHES, getTunnelNetwork } from "../utils/geometry";
+import { spawnToTarget } from "../utils/vehicleSpawn";
 
 interface Vehicle2D {
 	path: number[][];
@@ -30,6 +31,11 @@ const TunnelSimulation2D = ({
 	// Setup refs
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const vehiclesRef = useRef<Vehicle2D[]>([]);
+	const densityRef = useRef(density);
+	const speedRef = useRef(speed);
+
+	densityRef.current = density;
+	speedRef.current = speed;
 
 	// Helper function
 	const getLeftNormal = useCallback((dir: number[]) => {
@@ -50,16 +56,12 @@ const TunnelSimulation2D = ({
 				(edge) => edge.type === "tunnel",
 			);
 
-			// Spawn if below density limit
-			if (vehicles.length < targetDensity && Math.random() < 0.05) {
-				// Pick a random route
+			spawnToTarget(vehicles, targetDensity, () => {
 				const route =
 					tunnelRoutes[Math.floor(Math.random() * tunnelRoutes.length)];
-
 				const start = route.from.split("_")[0];
 				const end = route.to.split("_")[0];
 
-				// Stitch full path: entry -> div -> tunnel path -> merge -> exit
 				const entryPos = network.nodes[`${start}_entry`];
 				const divPos = network.nodes[`${start}_div`];
 				const mergePos = network.nodes[`${end}_merge`];
@@ -67,20 +69,22 @@ const TunnelSimulation2D = ({
 
 				const fullPath = [entryPos, divPos, ...route.path, mergePos, exitPos];
 
-				// Pod Colors (Neon themed or Technical)
 				const colors = ["#00E5FF", "#34D399", "#F87171", "#F1F5F9"];
 
-				vehicles.push({
+				return {
 					path: fullPath,
 					progress: 0,
-					speed: (Math.random() * 0.4 + 0.8) * simSpeedMultiplier * 1.5, // steps per frame
+					speed: (Math.random() * 0.4 + 0.8) * simSpeedMultiplier * 1.5,
 					color: colors[Math.floor(Math.random() * colors.length)],
 					width: 3.5,
 					length: 7.5,
-				});
+				};
+			});
+
+			if (vehicles.length > targetDensity) {
+				vehicles.length = targetDensity;
 			}
 
-			// Move & Filter active vehicles
 			vehiclesRef.current = vehicles
 				.map((v) => {
 					v.progress += v.speed;
@@ -159,14 +163,11 @@ const TunnelSimulation2D = ({
 		[],
 	);
 
-	// Setup/Reset vehicle simulation
-	useEffect(() => {
-		vehiclesRef.current = [];
-	}, []); // Reset vehicles when setback configuration changes
-
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
+
+		vehiclesRef.current = [];
 
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
@@ -332,22 +333,25 @@ const TunnelSimulation2D = ({
 
 			ctx.setLineDash([]); // Reset dashed lines
 
+			const drawEdgePath = (path: number[][], drawFn: () => void) => {
+				ctx.beginPath();
+				ctx.moveTo(tx(path[0][0]), ty(path[0][1]));
+				for (let i = 1; i < path.length; i++) {
+					ctx.lineTo(tx(path[i][0]), ty(path[i][1]));
+				}
+				drawFn();
+			};
+
 			// Draw tunnel casings (troughs)
 			network.edges.forEach((edge) => {
 				if (edge.type === "tunnel") {
+					const path = edge.path;
 					ctx.strokeStyle = theme.bg;
 					ctx.lineWidth = 7.0;
-					ctx.beginPath();
-					ctx.moveTo(tx(edge.path[0][0]), ty(edge.path[0][1]));
-					for (let i = 1; i < edge.path.length; i++) {
-						ctx.lineTo(tx(edge.path[i][0]), ty(edge.path[i][1]));
-					}
-					ctx.stroke();
-
-					// Outer casing stroke
+					drawEdgePath(path, () => ctx.stroke());
 					ctx.strokeStyle = theme.grid;
 					ctx.lineWidth = 5.0;
-					ctx.stroke();
+					drawEdgePath(path, () => ctx.stroke());
 				}
 			});
 
@@ -362,23 +366,13 @@ const TunnelSimulation2D = ({
 
 				ctx.strokeStyle = color;
 				ctx.lineWidth = edge.type === "tunnel" ? 2.5 : 1.5;
-				if (edge.type !== "tunnel") {
-					ctx.setLineDash([2, 4]); // Dashed for ascent/descent ramps
-				} else {
-					ctx.setLineDash([]);
-				}
+				ctx.setLineDash(edge.type !== "tunnel" ? [2, 4] : []);
 
-				ctx.beginPath();
-				ctx.moveTo(tx(edge.path[0][0]), ty(edge.path[0][1]));
-				for (let i = 1; i < edge.path.length; i++) {
-					ctx.lineTo(tx(edge.path[i][0]), ty(edge.path[i][1]));
-				}
-				ctx.stroke();
+				drawEdgePath(edge.path, () => ctx.stroke());
 			});
 			ctx.setLineDash([]); // Reset
 
-			// Update & Draw Vehicles
-			updateVehicles(network, density, speed);
+			updateVehicles(network, densityRef.current, speedRef.current);
 			drawVehicles(ctx, tx, ty, ts, isDark);
 
 			// Draw Portals
@@ -511,15 +505,7 @@ const TunnelSimulation2D = ({
 			cancelAnimationFrame(animationId);
 			window.removeEventListener("resize", resizeCanvas);
 		};
-	}, [
-		config,
-		isDark,
-		density,
-		speed,
-		updateVehicles,
-		drawVehicles,
-		getLeftNormal,
-	]);
+	}, [config, isDark, updateVehicles, drawVehicles, getLeftNormal]);
 
 	return (
 		<canvas
