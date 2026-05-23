@@ -24,26 +24,70 @@ export default function ScenarioModeler() {
 					safetyLevel: "Moderate (Battery Fires Only)",
 				};
 
-	// SVG donut chart constants
-	const size = 200;
+	// SVG donut chart constants — 260 px gives enough margin for per-slice labels
+	const size = 260;
 	const radius = 65;
-	const strokeWidth = 24;
-	const center = size / 2;
+	const strokeWidth = 22;
+	const center = size / 2; // 130
 	const circumference = 2 * Math.PI * radius;
 
-	// Calculate segment parameters
+	// Segments – include a short `name` for the in-chart labels
 	const segments =
 		policy === "mixed"
 			? [
-					{ value: 60, color: "var(--primary)", label: "Boring (60%)" },
-					{ value: 25, color: "#f59e0b", label: "Ventilation (25%)" },
-					{ value: 15, color: "var(--text-muted)", label: "Safety (15%)" },
+					{
+						value: 60,
+						color: "var(--primary)",
+						label: "Boring (60%)",
+						name: "Boring",
+					},
+					{
+						value: 25,
+						color: "#f59e0b",
+						label: "Ventilation (25%)",
+						name: "Ventilation",
+					},
+					{
+						value: 15,
+						color: "var(--text-muted)",
+						label: "Safety (15%)",
+						name: "Safety",
+					},
 				]
 			: [
-					{ value: 80, color: "var(--primary)", label: "Boring (80%)" },
-					{ value: 5, color: "var(--left-turn)", label: "Ventilation (5%)" },
-					{ value: 15, color: "var(--text-muted)", label: "Safety (15%)" },
+					{
+						value: 80,
+						color: "var(--primary)",
+						label: "Boring (80%)",
+						name: "Boring",
+					},
+					{
+						value: 5,
+						color: "var(--left-turn)",
+						label: "Ventilation (5%)",
+						name: "Vent.",
+					},
+					{
+						value: 15,
+						color: "var(--text-muted)",
+						label: "Safety (15%)",
+						name: "Safety",
+					},
 				];
+
+	// Pre-compute label positions at each segment's arc midpoint.
+	// The SVG has CSS transform: rotate(-90deg), so an SVG angle θ equals
+	// the visual clockwise angle from 12 o'clock — no extra offset needed.
+	let labelAccum = 0;
+	const sliceLabelData = segments.map((seg) => {
+		const midAngleRad = ((labelAccum + seg.value / 2) / 100) * 2 * Math.PI;
+		// Push tiny slices further out to avoid ring overlap
+		const lRadius = radius + strokeWidth / 2 + (seg.value < 12 ? 28 : 20);
+		const lx = center + lRadius * Math.cos(midAngleRad);
+		const ly = center + lRadius * Math.sin(midAngleRad);
+		labelAccum += seg.value;
+		return { ...seg, lx, ly };
+	});
 
 	let accumulatedPercent = 0;
 
@@ -267,17 +311,17 @@ export default function ScenarioModeler() {
 								width={size}
 								height={size}
 								viewBox={`0 0 ${size} ${size}`}
-								style={{ transform: "rotate(-90deg)" }}
+								style={{ transform: "rotate(-90deg)", overflow: "visible" }}
 							>
 								<title>Cost Distribution / KM</title>
-								{segments.map((seg) => {
-									const dashOffset =
-										circumference - (seg.value / 100) * circumference;
-									const dashArray = `${circumference} ${circumference}`;
-									const offsetPercent =
-										(accumulatedPercent / 100) * circumference;
-									accumulatedPercent += seg.value;
 
+								{/* Donut ring segments */}
+								{segments.map((seg) => {
+									const segLength = (seg.value / 100) * circumference;
+									const dashArray = `${segLength} ${circumference - segLength}`;
+									const dashOffset =
+										circumference * (1 - accumulatedPercent / 100);
+									accumulatedPercent += seg.value;
 									return (
 										<circle
 											key={seg.label}
@@ -288,7 +332,7 @@ export default function ScenarioModeler() {
 											stroke={seg.color}
 											strokeWidth={strokeWidth}
 											strokeDasharray={dashArray}
-											strokeDashoffset={dashOffset - offsetPercent}
+											strokeDashoffset={dashOffset}
 											style={{
 												transition:
 													"stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease",
@@ -296,7 +340,46 @@ export default function ScenarioModeler() {
 										/>
 									);
 								})}
+
+								{/* Per-slice labels – counter-rotated 90° to cancel the SVG's -90° CSS rotation */}
+								{sliceLabelData.map((sl) => (
+									<g
+										key={`lbl-${sl.label}`}
+										transform={`rotate(90, ${sl.lx}, ${sl.ly})`}
+										style={{
+											transition: "opacity 0.4s ease",
+										}}
+									>
+										{/* category name */}
+										<text
+											x={sl.lx}
+											y={sl.ly - 7}
+											textAnchor="middle"
+											dominantBaseline="middle"
+											fill={sl.color}
+											fontSize={sl.value < 10 ? 8 : 9}
+											fontWeight="600"
+											opacity="0.85"
+										>
+											{sl.name}
+										</text>
+										{/* percentage value */}
+										<text
+											x={sl.lx}
+											y={sl.ly + 7}
+											textAnchor="middle"
+											dominantBaseline="middle"
+											fill={sl.color}
+											fontSize={sl.value < 10 ? 10 : 12}
+											fontWeight="800"
+										>
+											{sl.value}%
+										</text>
+									</g>
+								))}
 							</svg>
+
+							{/* Static center label */}
 							<div
 								style={{
 									position: "absolute",
@@ -309,78 +392,69 @@ export default function ScenarioModeler() {
 									justifyContent: "center",
 									alignItems: "center",
 									pointerEvents: "none",
+									gap: "2px",
 								}}
 							>
 								<span
 									style={{
-										fontSize: "0.75rem",
+										fontSize: "0.6rem",
 										color: "var(--text-muted)",
 										textTransform: "uppercase",
+										letterSpacing: "0.1em",
 									}}
 								>
-									Ventilation
+									CapEx
 								</span>
 								<span
 									style={{
-										fontSize: "1.75rem",
-										fontWeight: 800,
-										fontFamily: "var(--font-heading)",
+										fontSize: "0.6rem",
+										color: "var(--text-muted)",
+										textTransform: "uppercase",
+										letterSpacing: "0.1em",
 									}}
 								>
-									{policy === "mixed" ? "25%" : "5%"}
+									/ km
 								</span>
 							</div>
 						</div>
 
-						{/* Legend */}
+						{/* Legend – driven from segments array so it stays in sync */}
 						<div
 							style={{
 								display: "flex",
-								gap: "1.5rem",
+								gap: "1.25rem",
 								fontSize: "0.8rem",
 								fontWeight: 600,
+								flexWrap: "wrap",
+								justifyContent: "center",
 							}}
 						>
-							<div
-								style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
-							>
+							{segments.map((seg) => (
 								<div
+									key={seg.label}
 									style={{
-										width: "12px",
-										height: "12px",
-										borderRadius: "3px",
-										background: "var(--primary)",
+										display: "flex",
+										alignItems: "center",
+										gap: "0.4rem",
 									}}
-								/>
-								<span>Boring</span>
-							</div>
-							<div
-								style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
-							>
-								<div
-									style={{
-										width: "12px",
-										height: "12px",
-										borderRadius: "3px",
-										background:
-											policy === "mixed" ? "#f59e0b" : "var(--left-turn)",
-									}}
-								/>
-								<span>Ventilation</span>
-							</div>
-							<div
-								style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
-							>
-								<div
-									style={{
-										width: "12px",
-										height: "12px",
-										borderRadius: "3px",
-										background: "var(--text-muted)",
-									}}
-								/>
-								<span>Safety/Lining</span>
-							</div>
+								>
+									<div
+										style={{
+											width: "10px",
+											height: "10px",
+											borderRadius: "2px",
+											background: seg.color,
+											flexShrink: 0,
+										}}
+									/>
+									<span style={{ color: "var(--text-muted)" }}>
+										{seg.name === "Vent." ? "Ventilation" : seg.name}
+									</span>
+									<span style={{ color: seg.color, fontWeight: 800 }}>
+										{seg.value}%
+									</span>
+								</div>
+							))}
 						</div>
 					</div>
 				</div>
