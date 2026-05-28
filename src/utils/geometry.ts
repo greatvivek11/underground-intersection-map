@@ -11,6 +11,7 @@ export interface TunnelConfig {
 	roadWidth: number;
 	medianWidth: number;
 	laneWidth: number;
+	rotaryDiameter: number;
 	bezierPoints?: number;
 	kLeft: number;
 	kRight: number;
@@ -62,6 +63,7 @@ export const DEFAULT_TUNNEL_CONFIG: TunnelConfig = {
 	roadWidth: defaults.roadWidth,
 	medianWidth: defaults.medianWidth,
 	laneWidth: defaults.laneWidth,
+	rotaryDiameter: 250,
 	kLeft: defaults.kLeft,
 	kRight: defaults.kRight,
 	bezierPoints: defaults.bezierPoints,

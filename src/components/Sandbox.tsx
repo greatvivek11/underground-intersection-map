@@ -1,11 +1,7 @@
 import { Download, Maximize2, Minimize2, Settings, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-	buildTunnelConfig,
-	DEFAULT_TUNNEL_CONFIG,
-	type TunnelConfig,
-} from "../utils/geometry";
+import { buildTunnelConfig, type TunnelConfig } from "../utils/geometry";
 import TunnelSimulation2D from "./TunnelSimulation2D";
 import type { CameraPreset } from "./TunnelSimulation3D";
 
@@ -49,6 +45,7 @@ function SliderRow({
 	max,
 	step,
 	onChange,
+	valueColor,
 }: {
 	label: string;
 	value: number;
@@ -57,12 +54,20 @@ function SliderRow({
 	max: number;
 	step: number;
 	onChange: (v: number) => void;
+	valueColor?: string;
 }) {
 	return (
 		<div className="slider-group" style={{ flex: "1 1 40px" }}>
 			<div className="slider-label">
 				<span>{label}</span>
-				<span className="value">{displayValue}</span>
+				<span
+					className="value"
+					style={
+						valueColor ? { color: valueColor, fontWeight: "bold" } : undefined
+					}
+				>
+					{displayValue}
+				</span>
 			</div>
 			<input
 				type="range"
@@ -222,9 +227,10 @@ export default function Sandbox({
 	isDark: boolean;
 	toggleTheme: () => void;
 }) {
-	const [portalSetback, setPortalSetback] = useState(
-		DEFAULT_TUNNEL_CONFIG.portalSetback,
-	);
+	const [portalSetback, setPortalSetback] = useState(300);
+	const [roadWidth, setRoadWidth] = useState(120);
+	const [laneWidth, setLaneWidth] = useState(12);
+	const [rotaryDiameter, setRotaryDiameter] = useState(250);
 	const [trafficDensity, setTrafficDensity] = useState(10);
 	const [simSpeed, setSimSpeed] = useState(1);
 	const [viewType, setViewType] = useState("2d");
@@ -247,39 +253,164 @@ export default function Sandbox({
 		};
 	}, [isExpanded]);
 
-	const config = buildTunnelConfig({ portalSetback });
+	const config = buildTunnelConfig({
+		portalSetback,
+		roadWidth,
+		laneWidth,
+		rotaryDiameter,
+	});
+
+	const downloadBlob = (blob: Blob, filename: string) => {
+		const href = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = href;
+		link.download = filename;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(href);
+	};
 
 	const handleExport = async (format: "svg" | "png") => {
 		setIsExporting(true);
 		try {
-			const url = `/api/generate?setback=${portalSetback}&dark=${isDark}&format=${format}`;
-			const link = document.createElement("a");
-			link.href = url;
-			link.target = "_blank";
-			link.download = `tunnel_routing_schematic_${portalSetback}ft_${
-				isDark ? "dark" : "light"
-			}.${format}`;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
+			const url = `/api/generate?setback=${portalSetback}&roadWidth=${roadWidth}&laneWidth=${laneWidth}&rotaryDiameter=${rotaryDiameter}&dark=${isDark}&format=${format}`;
+			const response = await fetch(url);
+			const contentType = response.headers.get("content-type") ?? "";
+			if (!response.ok || !contentType.startsWith("image/")) {
+				throw new Error("The Python export API is not available.");
+			}
+			const blob = await response.blob();
+			downloadBlob(
+				blob,
+				`tunnel_routing_schematic_${portalSetback}ft_${
+					isDark ? "dark" : "light"
+				}.${format}`,
+			);
 		} catch (e) {
 			console.error(e);
+			window.alert(
+				`Failed to export ${format.toUpperCase()}. Please ensure the local backend server is running (run 'npm run dev:backend' in your terminal).`,
+			);
 		} finally {
 			setIsExporting(false);
 		}
 	};
 
 	// Shared sliders — used in both inline card and modal footer
+	const slopeValue = (25 / portalSetback) * 100;
+	let slopeColor = "#EF4444"; // Red
+	let slopeSafety = "Critical (Unsafe)";
+	if (slopeValue <= 8.5) {
+		slopeColor = "#22C55E"; // Green
+		slopeSafety = "Safe";
+	} else if (slopeValue <= 15) {
+		slopeColor = "#F97316"; // Orange
+		slopeSafety = "Marginal";
+	}
+
+	let rotaryColor = "#EF4444"; // Red
+	let rotarySafety = "Congested (Unsafe)";
+	if (rotaryDiameter >= 250 && rotaryDiameter <= 400) {
+		rotaryColor = "#22C55E"; // Green
+		rotarySafety = "Optimal (Safe)";
+	} else if (rotaryDiameter > 400) {
+		rotaryColor = "#F97316"; // Orange
+		rotarySafety = "Inefficient (High Construction Cost & Travel Time)";
+	}
+
 	const sliders = (
 		<>
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					gap: "0.25rem",
+					width: "100%",
+				}}
+			>
+				<SliderRow
+					label="Dedicated Corridor"
+					value={portalSetback}
+					displayValue={`${portalSetback} ft`}
+					min={90}
+					max={300}
+					step={5}
+					onChange={setPortalSetback}
+					valueColor={slopeColor}
+				/>
+				<div
+					style={{
+						fontSize: "0.74rem",
+						marginTop: "-0.5rem",
+						marginBottom: "0.75rem",
+						display: "flex",
+						justifyContent: "space-between",
+						color: "var(--text-muted)",
+						padding: "0 0.25rem",
+					}}
+				>
+					<span>Est. Ramp Slope (at 25ft depth):</span>
+					<span style={{ color: slopeColor, fontWeight: "bold" }}>
+						{slopeValue.toFixed(1)}% — {slopeSafety}
+					</span>
+				</div>
+			</div>
+
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					gap: "0.25rem",
+					width: "100%",
+				}}
+			>
+				<SliderRow
+					label="Rotary Major Diameter"
+					value={rotaryDiameter}
+					displayValue={`${rotaryDiameter} ft`}
+					min={200}
+					max={500}
+					step={10}
+					onChange={setRotaryDiameter}
+					valueColor={rotaryColor}
+				/>
+				<div
+					style={{
+						fontSize: "0.74rem",
+						marginTop: "-0.5rem",
+						marginBottom: "0.75rem",
+						display: "flex",
+						justifyContent: "space-between",
+						color: "var(--text-muted)",
+						padding: "0 0.25rem",
+					}}
+				>
+					<span>Underpass Safety & Cost Metric:</span>
+					<span style={{ color: rotaryColor, fontWeight: "bold" }}>
+						{rotarySafety}
+					</span>
+				</div>
+			</div>
+
 			<SliderRow
-				label="Portal Setback"
-				value={portalSetback}
-				displayValue={`${portalSetback} ft`}
-				min={40}
-				max={150}
+				label="Rotary Lane Width"
+				value={laneWidth}
+				displayValue={`${laneWidth} ft`}
+				min={12}
+				max={20}
+				step={1}
+				onChange={setLaneWidth}
+			/>
+
+			<SliderRow
+				label="Surface Road Width"
+				value={roadWidth}
+				displayValue={`${roadWidth} ft`}
+				min={50}
+				max={120}
 				step={5}
-				onChange={setPortalSetback}
+				onChange={setRoadWidth}
 			/>
 			<SliderRow
 				label="Traffic Density"
@@ -404,7 +535,7 @@ export default function Sandbox({
 									}}
 								>
 									{viewType === "2d"
-										? "2D Engine: HTML5 Canvas"
+										? "2D Engine: Python Matplotlib + SVG Overlay"
 										: "3D Engine: WebGL (Three.js)"}
 								</span>
 							</div>
@@ -431,79 +562,135 @@ export default function Sandbox({
 							</div>
 						</div>
 
-						{/* Canvas — explicit height so Three.js clientHeight is non-zero at init */}
-						<div style={{ padding: "1rem 1.5rem", flex: 1, minHeight: 0 }}>
-							<SimCanvas
-								viewType={viewType}
-								isDark={isDark}
-								config={config}
-								density={trafficDensity}
-								speed={simSpeed}
-								cameraPreset={camera3DPreset}
-								height="calc(100dvh - 240px)"
-							/>
-						</div>
-
-						{/* Footer: sliders + export + theme */}
+						{/* Split Layout Container */}
 						<div
 							style={{
-								padding: "1rem 1.5rem 1.25rem",
-								borderTop: "1px solid var(--border-color)",
+								flex: 1,
+								minHeight: 0,
 								display: "flex",
-								flexWrap: "wrap",
-								gap: "2rem",
-								alignItems: "flex-end",
-								background: "rgba(0,0,0,0.18)",
+								padding: "1rem 1.5rem",
+								gap: "1.5rem",
 							}}
 						>
+							{/* Left side: Canvas Area */}
 							<div
 								style={{
-									flex: "1 1 480px",
+									flex: 1,
+									height: "100%",
+									minHeight: 0,
 									display: "flex",
-									gap: "2rem",
-									flexWrap: "wrap",
+									position: "relative",
 								}}
 							>
-								{sliders}
+								<SimCanvas
+									viewType={viewType}
+									isDark={isDark}
+									config={config}
+									density={trafficDensity}
+									speed={simSpeed}
+									cameraPreset={camera3DPreset}
+									height="100%"
+								/>
 							</div>
 
+							{/* Right side: Sidebar Controls Panel */}
 							<div
 								style={{
-									display: "flex",
-									gap: "0.6rem",
+									width: "320px",
 									flexShrink: 0,
-									flexWrap: "wrap",
+									display: "flex",
+									flexDirection: "column",
+									gap: "1.5rem",
+									padding: "1.25rem",
+									background: "var(--bg-card)",
+									borderRadius: "1rem",
+									border: "1px solid var(--border-color)",
+									overflowY: "auto",
 								}}
 							>
-								<button
-									type="button"
-									className="btn btn-outline"
-									onClick={() => handleExport("svg")}
-									disabled={isExporting}
-									style={{ fontSize: "0.78rem", padding: "0.45rem 0.9rem" }}
+								<div
+									style={{
+										display: "flex",
+										alignItems: "center",
+										gap: "0.5rem",
+										borderBottom: "1px solid var(--border-color)",
+										paddingBottom: "0.75rem",
+									}}
 								>
-									<Download size={13} />
-									<span>SVG</span>
-								</button>
-								<button
-									type="button"
-									className="btn btn-outline"
-									onClick={() => handleExport("png")}
-									disabled={isExporting}
-									style={{ fontSize: "0.78rem", padding: "0.45rem 0.9rem" }}
+									<Settings size={18} style={{ color: "var(--primary)" }} />
+									<h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>
+										Routing Controls
+									</h3>
+								</div>
+
+								{/* Sliders list vertically aligned */}
+								<div
+									style={{
+										display: "flex",
+										flexDirection: "column",
+										gap: "1.25rem",
+									}}
 								>
-									<Download size={13} />
-									<span>PNG</span>
-								</button>
-								<button
-									type="button"
-									onClick={toggleTheme}
-									className="btn btn-secondary"
-									style={{ fontSize: "0.78rem", padding: "0.45rem 0.9rem" }}
+									{sliders}
+								</div>
+
+								{/* Theme and Export actions at the bottom */}
+								<div
+									style={{
+										marginTop: "auto",
+										display: "flex",
+										flexDirection: "column",
+										gap: "0.75rem",
+										borderTop: "1px solid var(--border-color)",
+										paddingTop: "1.25rem",
+									}}
 								>
-									<Minimize2 size={13} />
-									<span>{isDark ? "Light" : "Dark"}</span>
-								</button>
+									<button
+										type="button"
+										onClick={toggleTheme}
+										className="btn btn-secondary"
+										style={{
+											fontSize: "0.8rem",
+											width: "100%",
+											display: "inline-flex",
+											gap: "0.5rem",
+											justifyContent: "center",
+										}}
+									>
+										<Minimize2 size={13} />
+										<span>
+											Switch to {isDark ? "Light Paper" : "Dark Cyberpunk"}
+										</span>
+									</button>
+									<div
+										style={{
+											display: "grid",
+											gridTemplateColumns: "1fr 1fr",
+											gap: "0.6rem",
+										}}
+									>
+										<button
+											type="button"
+											className="btn btn-outline"
+											onClick={() => handleExport("svg")}
+											disabled={isExporting}
+											style={{ fontSize: "0.8rem" }}
+										>
+											<Download size={13} />
+											<span>SVG</span>
+										</button>
+										<button
+											type="button"
+											className="btn btn-outline"
+											onClick={() => handleExport("png")}
+											disabled={isExporting}
+											style={{ fontSize: "0.8rem" }}
+										>
+											<Download size={13} />
+											<span>PNG</span>
+										</button>
+									</div>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -522,8 +709,8 @@ export default function Sandbox({
 			<div className="section-header">
 				<h2 className="section-title">The Simulation Sandbox</h2>
 				<p className="section-subtitle">
-					Tune geometrical setbacks and traffic density to test performance of
-					the sub-surface routing.
+					Tune geometrical setbacks and traffic density to test the rotary
+					underpass circulation concept.
 				</p>
 			</div>
 
@@ -594,12 +781,11 @@ export default function Sandbox({
 							}}
 						>
 							<strong style={{ color: "var(--text-main)" }}>
-								Core deconfliction:
+								Rotary topology:
 							</strong>{" "}
-							L-2/L-3 use world offsets plus staggered depths (12&nbsp;ft+
-							clearance) where paths cross. Plan lines may overlap; 3D
-							underground view shows the flyover stack. See{" "}
-							<code>shared/tunnel-config.json</code>.
+							The 2D schematic uses a shared clockwise elliptical loop around a
+							retained structural core. 3D and export remain on the earlier
+							layered geometry until the rotary model is migrated there.
 						</p>
 					</div>
 
@@ -625,8 +811,8 @@ export default function Sandbox({
 							Python Engine Export
 						</h4>
 						<p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-							Download the official engineering drawings generated by the
-							backend Matplotlib engine with the parameters above.
+							Download the current layered reference drawings generated by the
+							backend Matplotlib engine. Rotary export is not migrated yet.
 						</p>
 						<div
 							style={{

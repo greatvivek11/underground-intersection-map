@@ -97,9 +97,9 @@ export default function Hero({ onOpenReport }: HeroProps) {
 						marginTop: "0.5rem",
 					}}
 				>
-					Evaluating small-diameter (12-foot) dedicated electric utility
-					underpasses to resolve intersection bottlenecks without surface
-					disruptions.
+					A shared elliptical rotary underpass for Indian intersections —
+					EV-only, clockwise circulation, configurable lane width and
+					major diameter, with zero surface disruption.
 				</p>
 			</div>
 
@@ -190,11 +190,11 @@ export default function Hero({ onOpenReport }: HeroProps) {
 						style={{
 							fontSize: "1.75rem",
 							fontWeight: 800,
-							color: "var(--right-turn)",
+							color: "var(--primary)",
 							fontFamily: "var(--font-heading)",
 						}}
 					>
-						L1 - L3
+						Rotary
 					</span>
 					<span
 						style={{
@@ -204,7 +204,7 @@ export default function Hero({ onOpenReport }: HeroProps) {
 							letterSpacing: "0.05em",
 						}}
 					>
-						Depth Strata
+						Underpass Type
 					</span>
 				</div>
 			</div>
